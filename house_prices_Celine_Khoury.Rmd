@@ -1,0 +1,253 @@
+---
+title: "House Prices"
+author: "Celine Khoury"
+date: "4/25/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+if(!"data.table" %in% installed.packages()) {
+  install.packages("data.table")
+} else {
+  print('data.table package already installed')
+}
+library(data.table)
+
+if(!"ggplot2" %in% installed.packages()) {
+  install.packages("ggplot2")
+} else {
+  print('ggplot2 package already installed')
+}
+library(ggplot2)
+
+if(!"plyr" %in% installed.packages()) {
+  install.packages("plyr")
+} else {
+  print('plyr package already installed')
+}
+library(plyr)
+
+if(!"scales" %in% installed.packages()) {
+  install.packages("scales")
+} else {
+  print('scales package already installed')
+}
+library(scales)
+
+if(!"dplyr" %in% installed.packages()) {
+  install.packages("dplyr")
+} else {
+  print('dplyr package already installed')
+}
+library(dplyr)     # To compute the `union` of the levels.
+
+if(!"png" %in% installed.packages()) {
+  install.packages("png")
+} else {
+  print('png package already installed')
+}
+library(png)       # To include images in this document.
+
+if(!"knitr" %in% installed.packages()) {
+  install.packages("knitr")
+} else {
+  print('knitr package already installed')
+}
+library(knitr)     # To include images inline in this doc.
+
+if(!"moments" %in% installed.packages()) {
+  install.packages("moments")
+} else {
+  print('moments package already installed')
+}
+library(moments)   # Skewness
+
+if(!"e1071" %in% installed.packages()) {
+  install.packages("e1071")
+} else {
+  print('e1071 package already installed')
+}
+library(e1071)     # Alternative for Skewness
+
+if(!"glmnet" %in% installed.packages()) {
+  install.packages("glmnet")
+} else {
+  print('glmnet package already installed')
+}
+library(glmnet)    # Lasso
+
+if(!"caret" %in% installed.packages()) {
+  install.packages("caret")
+} else {
+  print('caret package already installed')
+}
+library(caret)     # To enable Lasso training with CV.
+
+if(!"corrplot" %in% installed.packages()) {
+  install.packages("corrplot")
+} else {
+  print('corrplot package already installed')
+}
+library(corrplot)
+
+if(!"grid" %in% installed.packages()) {
+  install.packages("grid")
+} else {
+  print('grid package already installed')
+}
+library(grid)
+
+if(!"gridExtra" %in% installed.packages()) {
+  install.packages("gridExtra")
+} else {
+  print('gridExtra package already installed')
+}
+library(gridExtra)
+
+if(!"lattice" %in% installed.packages()) {
+  install.packages("lattice")
+} else {
+  print('lattice package already installed')
+}
+library(lattice)
+
+if(!"ggrepel" %in% installed.packages()) {
+  install.packages("ggrepel")
+} else {
+  print('ggrepel package already installed')
+}
+library(ggrepel)
+
+if(!"Hmisc" %in% installed.packages()) {
+  install.packages("Hmisc")
+} else {
+  print('Hmisc package already installed')
+}
+library(Hmisc)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r train-test splitting function}
+# Train-Test splitting function: 
+
+splitdf <- function(dataframe, seed=NULL) {
+  if (!is.null(seed)) set.seed(seed)
+  index <- 1:nrow(dataframe)
+  trainindex <- sample(index, trunc(length(index)/1.5))
+  trainset <- dataframe[trainindex, ]
+  testset <- dataframe[-trainindex, ]
+  list(trainset=trainset,testset=testset)
+}
+```
+
+```{r Data loading}
+# Data loading and preprocessing: 
+## Read the train and test datasets 
+
+train <- read.csv ("/Users/CelineKhoury/Desktop/Term-3-MBD/Advanced-R/Individual_Project/house_price_train.csv")
+test <- read.csv ("/Users/CelineKhoury/Desktop/Term-3-MBD/Advanced-R/Individual_Project/house_price_test.csv")
+
+summary(train)
+summary(test)
+```
+
+```{r}
+# Create the column "price" in the test set to be able to combine both datasets 
+dim(train)
+dim(test)
+test$price <- NA
+```
+
+```{r}
+
+# Create the column "dataType" in both TRAIN and TEST set and assign the value 'train' & 'test'. This will help us to split the dataset from the dataType, not by position.
+train$dataType <- "train"
+test$dataType <- "test"
+
+```
+
+```{r}
+
+# Merge the TRAIN and TEST dataset
+identical(names(train), names(test))
+dataset <- rbind(train, test)
+
+summary(dataset)
+str(dataset)
+
+```
+
+```{r}
+
+# We have 20 columns and the target variable is the "price". Let's analyze the features that we have to check if we need to clean or preprocess them 
+# To check if we have null or missing values 
+# Missing values by column:
+colSums(is.na(dataset))
+
+```
+
+```{r}
+
+# Drop the id column 
+dataset <- dataset[,-which(names(dataset) == "id")]
+
+```
+
+```{r}
+str(dataset)
+dataset$zipcode <- as.factor(dataset$zipcode)
+
+```
+
+
+```{r}
+
+# Factorize the features: 
+dataset$bedrooms <- as.factor(dataset$bedrooms)
+dataset$bathrooms <- as.factor(dataset$bathrooms)
+dataset$floors <- as.factor(dataset$floors)
+dataset$waterfront <- as.factor(dataset$waterfront)
+dataset$view <- as.factor(dataset$view)
+dataset$condition <- as.factor(dataset$condition)
+dataset$grade <- as.factor(dataset$grade)
+dataset$yr_built <- as.factor(dataset$yr_built)
+dataset$yr_renovated <- as.factor(dataset$yr_renovated)
+dataset$zipcode <- as.factor(dataset$zipcode)
+```
+
+```{r}
+## Or this way to factorize the features: 
+columns <- c("bedrooms", "bathrooms", "floors", "waterfront", "view", "condition", "grade", "yr_built", "yr_renovated", "zipcode")
+dataset[columns] <- lapply(dataset[columns], factor)
+```
+
+```{r}
+# Outlier Analysis:
+ggplot(hp_df, aes(x="",y=bedrooms))+ geom_boxplot(width=0.1) + theme(axis.line.x=element_blank(),axis.title.x=element_blank(), axis.ticks.x=element_blank(), axis.text.x=element_blank(),legend.position="none")
+```
+
+```{r}
+
+# Data visualization 
+# Removing Skewed variables 
+# Build the model 
+lm_model <- train(price~., data=trainnum, method="lm",metric="RMSE",
+                  maximize=FALSE,trControl=trainControl(method = "repeatedcv",number = 10)
+)
+
+lm_model$results # verifying accuracy 
+
+# Variable importance 
+varImp(lm_model)
+
+# Final Prediction 
+lmpreds <- round(predict(lm_model,newdata = testnum), 2)
+write.csv(data.frame(Id=test$Id,SalePrice=lmpreds),"linear_model_preds.csv",row.names = F)
+```
+
