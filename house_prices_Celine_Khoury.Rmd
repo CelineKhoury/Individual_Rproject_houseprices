@@ -5,137 +5,42 @@ date: "4/25/2019"
 output: html_document
 ---
 
+This R Markdown will be exploring the housing sale prices in King County, USA between the time period May 2014 and May 2015. 
+
+After calling all the required packages and installing them if needed, loading and reading the dataset, I will go through a data visualization / an exploratory data analysis (EDA) to identify the most important features and the correlation between them. 
+
+Secondly, Feature Engineering will be conducted. It is the process of using domain knowledge of the data to create features which, if done correctly, will increase the predictive power of the machine learning algorithms by creating features from raw data that help facilitate the machine learning process. 
+
+Finally, I will be applying different machine learning algorithms and evaluating their respective success to a cross-validated splitted train-test set.
+
+1) Calling all the required packages and installing them if needed 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-if(!"data.table" %in% installed.packages()) {
-  install.packages("data.table")
-} else {
-  print('data.table package already installed')
-}
-library(data.table)
 
-if(!"ggplot2" %in% installed.packages()) {
-  install.packages("ggplot2")
+Install_packages <- function(packages){
+  for (i in packages){
+    if(! i %in% installed.packages()) {
+      print(i)
+  install.packages(paste(i))
 } else {
-  print('ggplot2 package already installed')
+  print(paste0( i ,' package already installed'))
+  library(i , character.only = T)
 }
-library(ggplot2)
+  }}
+pack = c('data.table' , 'xgboost' , 'ggplot2' , "plyr" ,"scales" , "dplyr" , "png" , "knitr" , "moments" , 
+         "e1071" , "caret"  ,"corrplot" , "grid" ,"gridExtra" , "lattice" , "ggrepel" , "Hmisc"  , "randomForest")
 
-if(!"plyr" %in% installed.packages()) {
-  install.packages("plyr")
-} else {
-  print('plyr package already installed')
-}
-library(plyr)
+Install_packages(pack)
 
-if(!"scales" %in% installed.packages()) {
-  install.packages("scales")
-} else {
-  print('scales package already installed')
-}
-library(scales)
-
-if(!"dplyr" %in% installed.packages()) {
-  install.packages("dplyr")
-} else {
-  print('dplyr package already installed')
-}
-library(dplyr)     # To compute the `union` of the levels.
-
-if(!"png" %in% installed.packages()) {
-  install.packages("png")
-} else {
-  print('png package already installed')
-}
-library(png)       # To include images in this document.
-
-if(!"knitr" %in% installed.packages()) {
-  install.packages("knitr")
-} else {
-  print('knitr package already installed')
-}
-library(knitr)     # To include images inline in this doc.
-
-if(!"moments" %in% installed.packages()) {
-  install.packages("moments")
-} else {
-  print('moments package already installed')
-}
-library(moments)   # Skewness
-
-if(!"e1071" %in% installed.packages()) {
-  install.packages("e1071")
-} else {
-  print('e1071 package already installed')
-}
-library(e1071)     # Alternative for Skewness
-
-if(!"glmnet" %in% installed.packages()) {
-  install.packages("glmnet")
-} else {
-  print('glmnet package already installed')
-}
-library(glmnet)    # Lasso
-
-if(!"caret" %in% installed.packages()) {
-  install.packages("caret")
-} else {
-  print('caret package already installed')
-}
-library(caret)     # To enable Lasso training with CV.
-
-if(!"corrplot" %in% installed.packages()) {
-  install.packages("corrplot")
-} else {
-  print('corrplot package already installed')
-}
-library(corrplot)
-
-if(!"grid" %in% installed.packages()) {
-  install.packages("grid")
-} else {
-  print('grid package already installed')
-}
-library(grid)
-
-if(!"gridExtra" %in% installed.packages()) {
-  install.packages("gridExtra")
-} else {
-  print('gridExtra package already installed')
-}
-library(gridExtra)
-
-if(!"lattice" %in% installed.packages()) {
-  install.packages("lattice")
-} else {
-  print('lattice package already installed')
-}
-library(lattice)
-
-if(!"ggrepel" %in% installed.packages()) {
-  install.packages("ggrepel")
-} else {
-  print('ggrepel package already installed')
-}
-library(ggrepel)
-
-if(!"Hmisc" %in% installed.packages()) {
-  install.packages("Hmisc")
-} else {
-  print('Hmisc package already installed')
-}
-library(Hmisc)
+set.seed(222)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+The train-test splitting function that will be used later on 
 
 ```{r train-test splitting function}
-# Train-Test splitting function: 
-
+ 
 splitdf <- function(dataframe, seed=NULL) {
   if (!is.null(seed)) set.seed(seed)
   index <- 1:nrow(dataframe)
@@ -146,35 +51,44 @@ splitdf <- function(dataframe, seed=NULL) {
 }
 ```
 
-```{r Data loading}
-# Data loading and preprocessing: 
-## Read the train and test datasets 
+2) Data loading and preprocessing: 
 
-train <- read.csv ("/Users/CelineKhoury/Desktop/Term-3-MBD/Advanced-R/Individual_Project/house_price_train.csv")
-test <- read.csv ("/Users/CelineKhoury/Desktop/Term-3-MBD/Advanced-R/Individual_Project/house_price_test.csv")
+a)  Loading the datasets from my gist account. Reading the train and test datasets.
+
+```{r Data loading}
+
+train <- read.csv (url("https://gist.githubusercontent.com/CelineKhoury/53ddc466a65e9ae1cbaa2773638b87b9/raw/3baf60131c21bb35782e043a5bc77a6f386184a4/house_price_train.csv"))
+test <- read.csv (url("https://gist.githubusercontent.com/CelineKhoury/2ea2e63bf418d91270812f2a1f30ef2b/raw/8f6a575a60da419e0a8dc029ad17d1db235939a8/house_price_test.csv"))
 
 summary(train)
 summary(test)
 ```
 
+b) Create the column "price" in the test set to be able to combine both datasets 
+
 ```{r}
-# Create the column "price" in the test set to be able to combine both datasets 
+
 dim(train)
 dim(test)
 test$price <- NA
+
 ```
+
+c) Create the column "dataType" in both TRAIN and TEST sets and assign the value 'train' & 'test'. This will help us split the dataset from the dataType and not by position.
 
 ```{r}
 
-# Create the column "dataType" in both TRAIN and TEST set and assign the value 'train' & 'test'. This will help us to split the dataset from the dataType, not by position.
 train$dataType <- "train"
 test$dataType <- "test"
 
 ```
 
-```{r}
+d) Merging the TRAIN and TEST datasets 
 
-# Merge the TRAIN and TEST dataset
+```{r}
+dim(train)
+dim(test)
+
 identical(names(train), names(test))
 dataset <- rbind(train, test)
 
@@ -183,71 +97,326 @@ str(dataset)
 
 ```
 
+We have 20 columns and the target variable is the "price". Let's analyze the features that we have to check if we need to clean or preprocess them. 
+
+e) Check if we have null or missing values by column: 
+
 ```{r}
 
-# We have 20 columns and the target variable is the "price". Let's analyze the features that we have to check if we need to clean or preprocess them 
-# To check if we have null or missing values 
-# Missing values by column:
 colSums(is.na(dataset))
 
 ```
 
-```{r}
-
-# Drop the id column 
-dataset <- dataset[,-which(names(dataset) == "id")]
-
-```
 
 ```{r}
 str(dataset)
-dataset$zipcode <- as.factor(dataset$zipcode)
 
 ```
 
+f) Outlier Analysis:
+
+We will visualize all numeric columns against the house price. 
 
 ```{r}
 
-# Factorize the features: 
-dataset$bedrooms <- as.factor(dataset$bedrooms)
-dataset$bathrooms <- as.factor(dataset$bathrooms)
-dataset$floors <- as.factor(dataset$floors)
-dataset$waterfront <- as.factor(dataset$waterfront)
-dataset$view <- as.factor(dataset$view)
-dataset$condition <- as.factor(dataset$condition)
-dataset$grade <- as.factor(dataset$grade)
-dataset$yr_built <- as.factor(dataset$yr_built)
-dataset$yr_renovated <- as.factor(dataset$yr_renovated)
-dataset$zipcode <- as.factor(dataset$zipcode)
+numeric_var <- names(train)[which(sapply(train, is.numeric))]
+
+for (i in seq_along(numeric_var)) {
+      plt <- ggplot(data = train, aes_string(numeric_var[i], 'price')) +
+    geom_point(color = "red") +
+    scale_y_continuous(labels = function(x) format(x, scientific = FALSE))
+  print(plt)
+}
+```
+
+Removing outliers manually according to the visualization of every variable against the target variable
+
+```{r} 
+
+ train <- subset (train, bedrooms < 20)
+ train <- subset (train, sqft_living < 11000)
+```
+
+g) Correlation plot 
+
+```{r}
+
+dfCor <- cor(train[sapply(train, is.numeric)])
+corrplot(dfCor)
+
+```
+
+3) Data visualization / EDA:
+
+```{r}
+
+## Check for the Distribution of the price
+
+g1<-ggplot(dataset,aes(x=price))+geom_density(fill="blue")
+g2<-ggplot(dataset,aes(x=sqft_living))+geom_histogram(binwidth=1,fill="green")
+grid.arrange(g1,g2,nrow=1,ncol=2)
+
+## The distribution of house prices & sqft_living is rightly skewed, so let's apply log10() and then plot the distribution again
+
+dataset<-dataset %>% 
+             mutate(log_price=log10(price))
+ggplot(dataset,aes(x=log_price))+geom_histogram(fill="green",binwidth=0.10)
+
+dataset<-dataset %>% 
+             mutate(log_size=log10(sqft_living))
+ggplot(dataset,aes(x=log_size))+geom_histogram(fill="blue")
+
+```
+
+ Check for the distribution of the price against the bedrooms variable. 
+
+```{r 'Bedrooms'}
+
+ggplot(dataset,aes(x=bedrooms,y=log_price,col=bedrooms))+
+geom_point(alpha=0.5,size=2)+
+geom_smooth(method="lm",se=F)+
+labs("title=Sqft Living vs Price")+scale_color_gradientn(colors='yellow')+theme(legend.position="none")
+
+```
+
+Check for the distribution of the bathrooms variable. 
+
+```{r 'bathrooms'}
+
+ggplot(dataset,aes(x=bathrooms))+geom_histogram(fill="green4",binwidth=0.5,size=0.1)+
+         scale_x_continuous(limits=c(1,8))
+```
+
+Check for the distribution of the house prices in respect to the condition of the house. 
+
+```{r "Distribution of house prices in respect to the condition of the house"}
+
+ggplot(dataset,aes(factor(condition),log_price,fill=factor(condition)))+
+geom_boxplot(alpha=0.6)+scale_fill_manual(values=rainbow(6))+
+theme(legend.position="none")+
+labs(x="House Condition")
+
+```
+
+Interpretation of the boxplot: 
+From the boxplot, it is very clear that having a high house condition means that the price of the house will be higher. 
+
+
+Creating a new variable 'houseview', indicating that if the house has a view of the waterfront it is true, else it is false. 
+
+```{r 'house view'}
+
+dataset$houseview<-ifelse(dataset$waterfront==1,TRUE,FALSE)
+
+dataset %>%
+  select(log_price, houseview) %>%
+  glimpse()
+
+ggplot(dataset, aes(x = houseview, y = log_price,fill=houseview)) +
+  geom_boxplot(alpha=0.5) +
+  labs(x = "waterfront", y = "logprice")+
+scale_fill_manual(values=rainbow(n=12))
+
+```
+
+Interpretation of the boxplot: 
+The houses that have a view of the waterfront tend to be much more expensive than the houses that don't have a view of the waterfront.
+
+
+4) Feature engineering : 
+
+1- Creating a new variable to check if there is an outdoor area in the lot which is given by the difference between the sqft_lot and the sqft_living.
+
+2- First extract the year from the date sold (yr_sold). Then, create a new variable which indicates the age of the house, given from the difference between the year of the date where the house was sold and the year the house was built. 
+
+If the difference is equal to zero it means that the house is new. 
+
+3- Creating a new variable 'renovated' indicating if the house is renovated or not.
+
+4- Since zipcodes are a representation of the area, the average price per zipcode and the number of houses per zipcode will be added to the dataset (keep in mind that all the values added were only taken from the train set since practically the information from the test set would not be available).
+
+The dataset will be splited here once just to be able to separate test from train and not have invalid information. Please keep in mind this split is only to complete feature engineering.
+
+5- In order to make these variables more precise the average per zipcode should not include the price of the house that we are training on, so this formula will be applied ((avg * cnt ) - price) / (cnt - 1))
+
+6- Since we don't have the prices of the final test set the price avg took an NA value but it is replaceable by the whole mean.
+
+7- Calculating the grade and condition with respect to the neighbors ( grade - avg_grade(per_zip) ) / std_grade(per_zip) and ( condition - avg_condition(per_zip)) / std_condition(per_zip) , please keep in mind that in this case the grade and condition are available informations even from the test set.
+
+```{r}
+
+# 1
+
+dataset$outdoor <- dataset$sqft_lot - dataset$sqft_living
+
+# 2
+
+dataset$yr_sold <- as.character(dataset$date)
+dataset$yr_sold <- substring(dataset$yr_sold, 7, 10)
+
+# if the difference is equal to zero it means that the house is new 
+
+dataset$yr_sold <- as.numeric (dataset$yr_sold)
+dataset$yr_built <- as.numeric (dataset$yr_built)
+dataset$house_age <- dataset$yr_sold - dataset$yr_built
+
+# 3 
+
+dataset <- dataset %>% mutate(renovated = ifelse(yr_renovated == 0, 0, 1))
+table(dataset$renovated)
+
+# 4
+
+test_bfe <- dataset[ dataset$dataType == 'test',]
+train_bfe <- dataset[ dataset$dataType == 'train',]
+m <- splitdf(train_bfe , seed = 20)
+train_set <- m$trainset
+
+avg_price <- train_set[,c('log_price' , 'zipcode') ] %>% group_by(zipcode)%>% summarise(log_price_avg = mean(log_price) , house_cnt =length(log_price) )
+dataset <- join( dataset , avg_price , by ='zipcode')
+
+# 5 
+
+dataset$log_price_avg_adj <- ((dataset$log_price_avg * dataset$house_cnt) - dataset$log_price) / (dataset$house_cnt - 1)
+
+# 6 
+dataset$log_price_avg_adj[is.na(dataset$log_price_avg_adj)] <- dataset$log_price_avg[is.na(dataset$log_price_avg_adj)]
+
+dataset <- dataset[,-which(names(dataset) == 'log_price_avg')]
+
+# 7 
+
+grade_subs <- dataset[,c('grade' , 'condition' , 'zipcode') ] %>% group_by(zipcode)%>% summarise(grade_avg = mean(grade) , grade_std =sd(grade) ,condition_avg = mean(condition) , condition_std =sd(condition)   )
+
+subset <- dataset[,c('grade' , 'condition' , 'zipcode') ]
+
+subset <- join( subset , grade_subs , by ='zipcode')
+
+subset$resp_grade <- (subset$grade - subset$grade_avg) / subset$grade_std
+subset$resp_cond <- (subset$condition - subset$condition_avg) / subset$condition_std
+dataset$resp_grade <- subset$resp_grade
+dataset$resp_cond<- subset$resp_cond
+
+
+str(dataset)
 ```
 
 ```{r}
-## Or this way to factorize the features: 
-columns <- c("bedrooms", "bathrooms", "floors", "waterfront", "view", "condition", "grade", "yr_built", "yr_renovated", "zipcode")
+
+# Factorizing some variables
+columns <- c( "floors", "waterfront", "view", "condition")
 dataset[columns] <- lapply(dataset[columns], factor)
+
+# Replacing True or False by 1 and 0 
+dataset <- dataset%>% mutate(houseview = ifelse(houseview == FALSE, 0, 1))
+
 ```
 
 ```{r}
-# Outlier Analysis:
-ggplot(hp_df, aes(x="",y=bedrooms))+ geom_boxplot(width=0.1) + theme(axis.line.x=element_blank(),axis.title.x=element_blank(), axis.ticks.x=element_blank(), axis.text.x=element_blank(),legend.position="none")
+
+test_fe <- dataset[ dataset$dataType == 'test',]
+train_fe <- dataset[ dataset$dataType == 'train',]
+m <- splitdf(train_fe , seed = 20)
+train_set <- m$trainset
+val_set <- m$testset
+train_set <- train_set[,!(names(train_set) %in% c("dataType" , 'price' , 'date' , 'id' ))]
+val_set <- val_set[,!(names(val_set) %in% c("dataType" , 'price' , 'date', 'id' ))]
+names(val_set)
+names(train_set)
+
 ```
+
+
+Building the model
+
+```{r}
+ 
+str(train_set)
+baseline <- lm(formula = log_price ~ . , data = train_set )
+
+summary(baseline)
+
+predicted_lm <- as.data.frame(predict(baseline , val_set))
+MAPE_lm <- mean(abs((10^(val_set$log_price)-10^(predicted_lm$`predict(baseline, val_set)`))/10^(val_set$log_price)))
+RMSE_lm <- sqrt(mean((10^(val_set$log_price)-10^(predicted_lm$`predict(baseline, val_set)`))^2))
+print(paste0( 'The MAPE of the Linear Model is : ' , MAPE_lm , " and the RMSE is : " , RMSE_lm))
+
+
+```
+
+Check for the most important variables 
 
 ```{r}
 
-# Data visualization 
-# Removing Skewed variables 
-# Build the model 
-lm_model <- train(price~., data=trainnum, method="lm",metric="RMSE",
-                  maximize=FALSE,trControl=trainControl(method = "repeatedcv",number = 10)
-)
+imp <- varImp(baseline)
+imp
 
-lm_model$results # verifying accuracy 
-
-# Variable importance 
-varImp(lm_model)
-
-# Final Prediction 
-lmpreds <- round(predict(lm_model,newdata = testnum), 2)
-write.csv(data.frame(Id=test$Id,SalePrice=lmpreds),"linear_model_preds.csv",row.names = F)
 ```
+
+Random Forest Model : 
+
+```{r}
+
+str(train_set)
+
+### Random Forest model tried , it improved the score and both the MAPE and RMSE were reduced
+
+rf <- randomForest(formula = log_price ~ . , data = train_set)
+
+summary(rf)
+
+predicted_rf <- as.data.frame(predict(rf , val_set))
+MAPE_rf <- mean(abs((10^(val_set$log_price)-10^(predicted_rf$`predict(rf, val_set)`))/10^(val_set$log_price)))
+RMSE_rf <- sqrt(mean((10^(val_set$log_price)-10^(predicted_rf$`predict(rf, val_set)`))^2))
+print(paste0( 'The MAPE of the Random Forest Model is : ' , MAPE_rf , " and the RMSE is : " , RMSE_rf))
+
+```
+
+Here XGBoost is tried, these parameters were tested and improved after understanding each one of them and adapting them to the data we have during multiple trials.
+
+```{r}
+
+dtrain <- xgb.DMatrix(data.matrix(train_set[,-which(names(train_set) == "log_price")], rownames.force = NA), label = train_set$log_price)
+
+dtest <- xgb.DMatrix(data.matrix(val_set[,-which(names(val_set) == "log_price")], rownames.force = NA), label = val_set$log_price)
+
+watchlist <- list(train = dtrain, eval = dtest)
+
+param <- list(max_depth = 6 , booster = 'gbtree',
+              eta = 0.2, 
+              silent = 1, 
+              nthread = 2, 
+              min_child_weight = 4 , 
+              num_parallel_tree = 100 , 
+              objective = "reg:linear", 
+              eval_metric = "rmse")
+
+xgboost <- xgb.train(param, dtrain, nrounds = 100, watchlist )
+
+# summary(xgboost)
+
+predicted_xgboost <- as.data.frame(predict(xgboost , dtest))
+MAPE_xg <- mean(abs((10^(val_set$log_price)-10^(predicted_xgboost$`predict(xgboost, dtest)`))/10^(val_set$log_price)))
+RMSE_xg <- sqrt(mean((10^(val_set$log_price)-10^(predicted_xgboost$`predict(xgboost, dtest)`))^2))
+
+print(paste0( 'The MAPE of the XGBoost Model is : ' , MAPE_xg , " and the RMSE is : " , RMSE_xg))
+
+
+
+```
+
+Since XGBoost gave the best training score this is the model that will be used for predictions of the final test 
+
+```{r}
+
+d_f_test<- xgb.DMatrix(data.matrix(test_fe[,!(names(test_fe) %in% c("dataType" , 'price' , 'date' , 'id' ,'log_price'))], rownames.force = NA), label = test_fe$log_price)
+
+test_fe$price_pred <- 10^predict(xgboost , d_f_test)
+
+id_pred <- test_fe[,c('id', 'price_pred')]
+write.csv(id_pred ,  'test_prediction.csv')
+
+```
+
+
 
