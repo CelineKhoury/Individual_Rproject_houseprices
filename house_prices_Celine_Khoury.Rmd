@@ -5,6 +5,9 @@ date: "4/25/2019"
 output: html_document
 ---
 
+This file is available in the following github repository:
+https://github.com/CelineKhoury/Individual_Rproject_houseprices 
+
 This R Markdown will be exploring the housing sale prices in King County, USA between the time period May 2014 and May 2015. 
 
 After calling all the required packages and installing them if needed, loading and reading the dataset, I will go through a data visualization / an exploratory data analysis (EDA) to identify the most important features and the correlation between them. 
@@ -108,11 +111,6 @@ colSums(is.na(dataset))
 ```
 
 
-```{r}
-str(dataset)
-
-```
-
 f) Outlier Analysis:
 
 We will visualize all numeric columns against the house price. 
@@ -201,18 +199,11 @@ labs(x="House Condition")
 Interpretation of the boxplot: 
 From the boxplot, it is very clear that having a high house condition means that the price of the house will be higher. 
 
+Interpreting the waterfront variable with respect to the price:
 
-Creating a new variable 'houseview', indicating that if the house has a view of the waterfront it is true, else it is false. 
+```{r 'waterfront'}
 
-```{r 'house view'}
-
-dataset$houseview<-ifelse(dataset$waterfront==1,TRUE,FALSE)
-
-dataset %>%
-  select(log_price, houseview) %>%
-  glimpse()
-
-ggplot(dataset, aes(x = houseview, y = log_price,fill=houseview)) +
+ggplot(dataset, aes(x = waterfront, y = log_price,fill=waterfront)) +
   geom_boxplot(alpha=0.5) +
   labs(x = "waterfront", y = "logprice")+
 scale_fill_manual(values=rainbow(n=12))
@@ -243,7 +234,7 @@ The dataset will be splited here once just to be able to separate test from trai
 
 7- Calculating the grade and condition with respect to the neighbors ( grade - avg_grade(per_zip) ) / std_grade(per_zip) and ( condition - avg_condition(per_zip)) / std_condition(per_zip) , please keep in mind that in this case the grade and condition are available informations even from the test set.
 
-```{r}
+```{r 'Feature Engineering'}
 
 # 1
 
@@ -301,14 +292,12 @@ dataset$resp_cond<- subset$resp_cond
 str(dataset)
 ```
 
-```{r}
+Factorizing some variables:
 
-# Factorizing some variables
+```{r}
 columns <- c( "floors", "waterfront", "view", "condition")
 dataset[columns] <- lapply(dataset[columns], factor)
 
-# Replacing True or False by 1 and 0 
-dataset <- dataset%>% mutate(houseview = ifelse(houseview == FALSE, 0, 1))
 
 ```
 
@@ -405,7 +394,7 @@ print(paste0( 'The MAPE of the XGBoost Model is : ' , MAPE_xg , " and the RMSE i
 
 ```
 
-Since XGBoost gave the best training score this is the model that will be used for predictions of the final test 
+Since XGBoost gave the best training score this is the model that will be used for predictions of the final test. 
 
 ```{r}
 
